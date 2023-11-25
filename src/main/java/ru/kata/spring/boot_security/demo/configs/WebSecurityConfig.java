@@ -7,13 +7,10 @@ import org.springframework.security.config.annotation.authentication.builders.Au
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
-import ru.kata.spring.boot_security.demo.service.UsersDetailsService;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import ru.kata.spring.boot_security.demo.services.UsersDetailsService;
 
 @Configuration
 @EnableWebSecurity
@@ -30,15 +27,25 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         http
+                .csrf().disable()
                 .authorizeRequests()
                 .antMatchers("/admin/**").hasRole("ADMIN")
+                .antMatchers("/user/**").hasAnyRole("USER", "ADMIN")
                 .antMatchers("/login").permitAll()
-                .anyRequest().hasAnyRole("ADMIN", "USER")
+                .anyRequest().authenticated()
                 .and()
-                .formLogin().successHandler(successUserHandler)
+                .formLogin()
+                .loginPage("/login")
+                .loginProcessingUrl("/process_login")
+                .usernameParameter("email")
+                .passwordParameter("password")
+                .successHandler(successUserHandler)
                 .permitAll()
                 .and()
-                .logout().logoutUrl("/logout").logoutSuccessUrl("/login");
+                .logout().logoutUrl("/logout")
+                .logoutRequestMatcher(new AntPathRequestMatcher("/logout", "GET"))
+                .logoutSuccessUrl("/login")
+                .permitAll();
     }
 
     public void configure(AuthenticationManagerBuilder auth) throws Exception {
